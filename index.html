@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Metabolic Gauntlet: High-Fidelity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap');
+        
+        body {
+            background-color: #050505;
+            color: #00ffcc;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+
+        .game-container {
+            border: 2px solid #ff0055;
+            box-shadow: 0 0 50px rgba(255, 0, 85, 0.3);
+            background: rgba(0, 0, 0, 0.98);
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 850px;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .btn-choice {
+            display: block;
+            width: 100%;
+            padding: 0.85rem;
+            margin-top: 8px;
+            background: rgba(255, 0, 85, 0.02);
+            border: 1px solid #1a1a1a;
+            color: #aaa;
+            text-align: left;
+            transition: 0.15s ease;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-choice:hover {
+            border-color: #ff0055;
+            color: #ff0055;
+            background: rgba(255, 0, 85, 0.08);
+            transform: translateX(8px);
+        }
+
+        #energy-fill {
+            height: 100%;
+            width: 0%;
+            background: #ff0055;
+            box-shadow: 0 0 20px #ff0055;
+            transition: width 0.4s ease;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+
+        #start-btn {
+            border: 2px solid #ff0055;
+            padding: 20px 40px;
+            color: #ff0055;
+            font-family: 'Orbitron';
+            cursor: pointer;
+            letter-spacing: 6px;
+            background: transparent;
+            text-transform: uppercase;
+        }
+
+        #start-btn:hover {
+            background: #ff0055;
+            color: black;
+            box-shadow: 0 0 40px #ff0055;
+        }
+
+        .glitch-fail {
+            color: #ff0055;
+            text-shadow: 2px 2px #550000;
+            animation: shake 0.1s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, -1px); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="start-overlay" class="overlay">
+    <button id="start-btn" onclick="startMission()">INITIALIZE GAUNTLET</button>
+    <p class="mt-8 text-[10px] text-gray-700 orbitron tracking-[0.4em]">STOICHIOMETRY UPDATED // NO HINTS</p>
+</div>
+
+<div class="game-container">
+    <div class="flex justify-between mb-4 text-[10px] orbitron text-pink-900 tracking-widest uppercase">
+        <span>Unit_001 // Stage_<span id="lvl-display">1</span></span>
+        <span id="loc-tag">Sector_Auth</span>
+    </div>
+
+    <div id="game-ui">
+        <h1 id="title" class="text-lg orbitron mb-3 text-white uppercase border-b border-pink-900 pb-2"></h1>
+        <p id="desc" class="text-gray-400 text-base mb-6 leading-tight min-h-[60px]"></p>
+        
+        <div id="choices" class="grid grid-cols-1 gap-1"></div>
+        
+        <div class="h-[2px] bg-gray-900 w-full mt-8">
+            <div id="energy-fill"></div>
+        </div>
+    </div>
+
+    <div id="fail-ui" class="hidden text-center py-8">
+        <h1 class="text-5xl orbitron glitch-fail mb-4 uppercase">Eliminated</h1>
+        <p class="text-gray-600 mb-8 tracking-widest text-xs uppercase">STOICHIOMETRIC ERROR. REBOOTING SEQUENCE.</p>
+        <button onclick="restartMission()" class="btn-choice text-center border-red-900 text-red-500 hover:text-white uppercase font-bold">Restart Gauntlet</button>
+    </div>
+
+    <div id="win-ui" class="hidden text-center py-8">
+        <h1 class="text-4xl orbitron text-green-500 mb-6 uppercase">System Optimized</h1>
+        <p class="text-gray-400 mb-10 text-lg italic">The 4-proton model is verified. ATP yield confirmed.</p>
+        <button onclick="restartMission()" class="btn-choice text-center border-green-900 text-green-500 hover:text-white uppercase font-bold">Repeat Cycle</button>
+    </div>
+</div>
+
+<script>
+    const missionData = {
+        1: {
+            t: "Checkpoint 01: Topography",
+            d: "Identify the precise location of the electron transport chain components.",
+            l: "CELL_MAP",
+            c: [
+                { txt: "Outer Mitochondrial Membrane", next: "fail" },
+                { txt: "Inner Mitochondrial Membrane", next: 2 },
+                { txt: "Mitochondrial Matrix Soluble Space", next: "fail" },
+                { txt: "Perimitochondrial Space", next: "fail" }
+            ]
+        },
+        2: {
+            t: "Checkpoint 02: Complex I Logic",
+            d: "Which specific prosthetic group is the initial acceptor of electrons from NADH in Complex I?",
+            l: "REDOX_CORE",
+            c: [
+                { txt: "Flavin Mononucleotide (FMN)", next: 3 },
+                { txt: "Iron-Sulfur (Fe-S) Cluster", next: "fail" },
+                { txt: "Ubiquinone", next: "fail" },
+                { txt: "Cytochrome b", next: "fail" }
+            ]
+        },
+        3: {
+            t: "Checkpoint 03: Mobile Carriers",
+            d: "Identify the lipophilic carrier that transfers electrons from both Complex I and II to Complex III.",
+            l: "MEMBRANE_LIPIDS",
+            c: [
+                { txt: "Cytochrome c", next: "fail" },
+                { txt: "Ubiquinone (Coenzyme Q)", next: 4 },
+                { txt: "Plastoquinone", next: "fail" },
+                { txt: "NAD+", next: "fail" }
+            ]
+        },
+        4: {
+            t: "Checkpoint 04: Complex II Constraints",
+            d: "Why does Complex II (Succinate Dehydrogenase) fail to pump protons across the membrane?",
+            l: "THERMODYNAMICS",
+            c: [
+                { txt: "The redox potential change is insufficient", next: 5 },
+                { txt: "It lacks Iron-Sulfur clusters", next: "fail" },
+                { txt: "It is a soluble matrix protein", next: "fail" },
+                { txt: "It only accepts electrons from NADH", next: "fail" }
+            ]
+        },
+        5: {
+            t: "Checkpoint 05: The Q-Cycle",
+            d: "In the Q-cycle of Complex III, how many protons are translocated to the intermembrane space per pair of electrons?",
+            l: "COMPLEX_III",
+            c: [
+                { txt: "2 Protons", next: "fail" },
+                { txt: "4 Protons", next: 6 },
+                { txt: "6 Protons", next: "fail" },
+                { txt: "0 Protons", next: "fail" }
+            ]
+        },
+        6: {
+            t: "Checkpoint 06: Cytochrome c Surface",
+            d: "Identify the specific localization of Cytochrome c required for its function.",
+            l: "PROTEIN_SURFACE",
+            c: [
+                { txt: "Outer surface of the Inner Membrane", next: 7 },
+                { txt: "Inner surface of the Inner Membrane", next: "fail" },
+                { txt: "Outer surface of the Outer Membrane", next: "fail" },
+                { txt: "Mitochondrial Matrix", next: "fail" }
+            ]
+        },
+        7: {
+            t: "Checkpoint 07: Complex IV Metals",
+            d: "Which metal ions are critical for the reduction of Oxygen at the heme a3 site?",
+            l: "METALLO_ENZYMES",
+            c: [
+                { txt: "Fe (Iron) and Cu (Copper)", next: 8 },
+                { txt: "Mg (Magnesium) and Fe (Iron)", next: "fail" },
+                { txt: "Zn (Zinc) and Cu (Copper)", next: "fail" },
+                { txt: "Mn (Manganese) and Fe (Iron)", next: "fail" }
+            ]
+        },
+        8: {
+            t: "Checkpoint 08: Terminal Reduction",
+            d: "What is the final stoichiometric requirement of electrons to reduce one molecule of O2 into two molecules of H2O?",
+            l: "REDOX_SINK",
+            c: [
+                { txt: "2 Electrons", next: "fail" },
+                { txt: "4 Electrons", next: 9 },
+                { txt: "1 Electron", next: "fail" },
+                { txt: "6 Electrons", next: "fail" }
+            ]
+        },
+        9: {
+            t: "Checkpoint 09: pH Dynamics",
+            d: "In which compartment does the pH decrease during active electron transport?",
+            l: "pH_GRADIENT",
+            c: [
+                { txt: "Intermembrane Space", next: 10 },
+                { txt: "Mitochondrial Matrix", next: "fail" },
+                { txt: "Cytoplasm", next: "fail" },
+                { txt: "Nucleoplasm", next: "fail" }
+            ]
+        },
+        10: {
+            t: "Checkpoint 10: Proton Motive Force",
+            d: "The Proton Motive Force (PMF) consists of which two electrochemical components?",
+            l: "THERMODYNAMICS",
+            c: [
+                { txt: "Membrane potential and Chemical (pH) gradient", next: 11 },
+                { txt: "Kinetic energy and ATP concentration", next: "fail" },
+                { txt: "Gravity and Osmotic pressure", next: "fail" },
+                { txt: "Entropy and Hydrophobic interactions", next: "fail" }
+            ]
+        },
+        11: {
+            t: "Checkpoint 11: Complex V Rotation",
+            d: "Which subunit of ATP Synthase constitutes the proton-conducting pore?",
+            l: "MOLECULAR_MOTOR",
+            c: [
+                { txt: "F1 Alpha subunit", next: "fail" },
+                { txt: "F0 c-ring", next: 12 },
+                { txt: "F1 Gamma stalk", next: "fail" },
+                { txt: "F1 Beta subunit", next: "fail" }
+            ]
+        },
+        12: {
+            t: "Checkpoint 12: Final Stoichiometry",
+            d: "What is the total proton cost (rotation + phosphate import) per ATP synthesized and exported?",
+            l: "TOTAL_YIELD",
+            c: [
+                { txt: "2 Protons", next: "fail" },
+                { txt: "3 Protons", next: "fail" },
+                { txt: "4 Protons", next: "win" },
+                { txt: "12 Protons", next: "fail" }
+            ]
+        }
+    };
+
+    function startMission() {
+        document.getElementById('start-overlay').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('start-overlay').style.display = 'none';
+        }, 500);
+        updateGame(1);
+    }
+
+    function updateGame(step) {
+        if(step === 'fail') {
+            document.getElementById('game-ui').classList.add('hidden');
+            document.getElementById('fail-ui').classList.remove('hidden');
+            return;
+        }
+        if(step === 'win') {
+            document.getElementById('game-ui').classList.add('hidden');
+            document.getElementById('win-ui').classList.remove('hidden');
+            return;
+        }
+
+        const data = missionData[step];
+        document.getElementById('lvl-display').innerText = step;
+        document.getElementById('title').innerText = data.t;
+        document.getElementById('desc').innerText = data.d;
+        document.getElementById('loc-tag').innerText = data.l;
+        document.getElementById('energy-fill').style.width = ((step / 12) * 100) + "%";
+
+        const cBox = document.getElementById('choices');
+        cBox.innerHTML = '';
+        
+        const shuffled = [...data.c].sort(() => Math.random() - 0.5);
+        shuffled.forEach(choice => {
+            const b = document.createElement('button');
+            b.className = 'btn-choice orbitron';
+            b.innerText = choice.txt;
+            b.onclick = () => updateGame(choice.next);
+            cBox.appendChild(b);
+        });
+    }
+
+    function restartMission() {
+        document.getElementById('fail-ui').classList.add('hidden');
+        document.getElementById('win-ui').classList.add('hidden');
+        document.getElementById('game-ui').classList.remove('hidden');
+        updateGame(1);
+    }
+</script>
+
+</body>
+</html>
